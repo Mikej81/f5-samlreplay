@@ -1,0 +1,23 @@
+{
+  "BIG-IP-comments": [
+    "package.json is the standard npm (www.npmjs.org) package definition file.",
+    "For more information please see www.npmjs.org/doc/package.json.html. "
+  ],
+  "name": "samlreplay",
+  "version": "0.0.1",
+  "description": "NODE.JS SAMLReplay, for BIG-IP ILX",
+  "author": "Michael Coleman <stumpj@gmail.com>",
+  "license": "MIT",
+  "private": true,
+  "repository": {},
+  "engines": {
+    "node": "6.9.1"
+  },
+  "dependencies": {
+    "f5-nodejs": "0.0.3",
+    "saml2json": "^1.0.0",
+    "xml-crypto": "^0.10.1",
+    "xmldom": "^0.1.27",
+    "zlib": "^1.0.5"
+  }
+}
