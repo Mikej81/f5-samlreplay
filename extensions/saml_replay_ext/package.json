@@ -22,11 +22,8 @@
     "xmldom": "^0.1.27",
     "zlib": "^1.0.5"
   },
-  "devDependencies": {
-    "eslint": "^4.19.1",
-    "eslint-config-strongloop": "^2.1.0"
-  },
+  "devDependencies": {},
   "scripts": {
-        "pretest": "eslint --ignore-path .gitignore ."
-    }
+    "pretest": "eslint --ignore-path .gitignore ."
+  }
 }
