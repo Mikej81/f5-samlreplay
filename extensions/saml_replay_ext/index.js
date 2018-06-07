@@ -232,22 +232,15 @@ ilx.addMethod('saml-request', function(req, res) {
       request['samlp:AuthnRequest']['@ProviderName'] = options.providerName;
     }
 
-    //callback(null, xmlbuilder.create(request).end());
-    //console.log(xmlbuilder.create(request).end());
-    //return xmlbuilder.create(request).end();
     var authrequest;
-    //console.log("sign: " + sign);
+
     if (sign == "true") {
         authrequest = signRequest(xmlbuilder.create(request).end());
     } else {
         authrequest = xmlbuilder.create(request).end();        
     }
-
     var encodedAuthNRequest = requestToURL(authrequest);
-    
-    //console.log(encodedAuthNRequest);
-    
-    var redirectAuth = options.issuerURL + '?SAMLRequest=' + encodedAuthNRequest 
+    var redirectAuth = options.issuerURL + '?SAMLRequest=' + encodedAuthNRequest;
     
     res.reply(['OK', redirectAuth]);
 });
@@ -261,8 +254,7 @@ ilx.addMethod('saml-validate', function(req, res) {
     var doc = new dom().parseFromString(rawAssertion);
     var signature = select(doc, "/*/*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")[0];
     var sig = new SignedXml();
-    //IF keep this method, move outside of function, sync/async
-    
+
     var isvalid;
     if (typeof signature !== "undefined") {
         sig.keyInfoProvider = new FileKeyInfo(signaturePubKey);
@@ -293,3 +285,4 @@ ilx.addMethod('saml-validate', function(req, res) {
 
 // Start listening for ILX::call and ILX::notify events.
 ilx.listen();
+

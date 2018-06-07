@@ -21,5 +21,12 @@
     "xmlbuilder": "^10.0.0",
     "xmldom": "^0.1.27",
     "zlib": "^1.0.5"
-  }
+  },
+  "devDependencies": {
+    "eslint": "^4.19.1",
+    "eslint-config-strongloop": "^2.1.0"
+  },
+  "scripts": {
+        "pretest": "eslint --ignore-path .gitignore ."
+    }
 }

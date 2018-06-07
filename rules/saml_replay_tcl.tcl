@@ -1,6 +1,12 @@
 #  SAMLReplay
 #  Verify SAMLReponse Signature and Replay to SP
 #  Michael Coleman, Michael@f5.com
+#
+#  HTTP-REDIRECT seems to be set.  Currently ignoring SigAlg and RelayState.
+#
+#  HTTP-POST needs some work.
+#
+################################################################################
 
 when HTTP_REQUEST {
     set client [IP::client_addr][TCP::remote_port][IP::local_addr][TCP::local_port]
@@ -76,15 +82,33 @@ when HTTP_REQUEST {
 }
 when HTTP_REQUEST_DATA {
     set postReplay_Handle [ILX::init saml_replay_plugin saml_replay_ext]
+    set post_header "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">"
+    append $post_header "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\"><body>"
+    append $post_header "<script type='text/javascript'>window.onload=function(){ window.setTimeout(document.SAMLReplay.submit.bind(document.SAMLReplay), 500);};</script>"
+    append $post_header "<noscript><p><strong>Note:</strong> Since your browser does not support JavaScript,you must press the Continue button once to proceed.</p></noscript>"
 
-    set POST_SAML_Response ""
+    set post_footer "<noscript><input type=\"submit\" value=\"Continue\"/></noscript></form></body></html>"
+    
+    set SAMLResponse ""
+    set relayState ""
     foreach x [split [string tolower [HTTP::payload]] "&"] {
         if {$x starts_with "samlresponse="} {
-            set POST_SAML_Response [lindex [split $x "="] 1]
-            set saml_verify [ILX::call $postReplay_Handle saml-validate $x true]
-                log local0. "status: $saml_verify"
+            set SAMLResponse [lindex [split $x "="] 1]
+        }
+        if {$x starts_with "relaystate="} {
+            set relayState [lindex [split $x "="] 1]
         }
     }
+    set saml_verify [ILX::call $postReplay_Handle saml-validate $x true]
+    log local0. "status: $saml_verify"
+
+    ##  This wont work here, so figure out best place for this form <HTTP_RESPONSE>?
+    set $post_form "<form name=\"SAMLReplay\" action=\"\" method=\"post\"><input type=\"hidden\" name=\"RelayState\" value=\"$relayState\"/>"
+    append $post_form "<input type=\"hidden\" name=\"SAMLRequest\" value=\"$SAMLResponse\"/>"
+    set content $post_header$post_form$post_footer
+    HTTP::respond 200 $content
 }
-
-
+## APM Integration 
+## when ACCESS_ACL_ALLOWED {
+##   ACCESS::respond 302 "Location" sessiontable entry
+## }
