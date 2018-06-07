@@ -13,6 +13,12 @@ BIG-IP 13.1.0.x
 ## TODO
 -HTTP-POST Binding:  Need some captures
 
--HTTP-POST 302-POST Hidden Form
-
 -APM Integration: SAMLResponse into table for replay after APM
+
+## Notes
+
+SP-Initiated:  Will currently generate AuthNRequest on GET / if no MRHSession.  
+
+HTTP-REDIRECT Binding currently seems good.  SigAlg and RelayState querystrings currently ignored.  SAMLResponse is pulled in and the signature is verified against a known public key for the issuer.
+
+HTTP-POST Binding needs some love.  Will currently parse incoming POST body and build a new (self-submitting) form, and will auto-post afer signatureverification.
