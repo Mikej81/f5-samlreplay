@@ -9,18 +9,26 @@
 ################################################################################
 
 when HTTP_REQUEST {
+    ## Create a HASH for the session table key for this user
     set client [IP::client_addr][TCP::remote_port][IP::local_addr][TCP::local_port]
     set client_hash [sha512 $client]
     set tableName $client_hash
     set keyName "Token"
     set apm_cookie [HTTP::cookie exists MRHSession]
 
+    ## Create RPC Handler, Plugin name needs to match the plugin below.
+    ## ILX::init <PLUGIN NAME> <EXTENSION NAME>
     set samlReplay_Handle [ILX::init saml_replay_plugin saml_replay_ext]
     
     if {$apm_cookie == 0} {
     ## Start Switch METHOD
+    ## GET:     HTTP-REDIRECT BINDGING
+    ## POST:    HTTP-POST BINDING
     switch [HTTP::method] {
         GET {
+            ## Start Switch QueryString
+            ## SAMLResponse:    Incoming SAMLResponse, currently ignoring RelayState and SigAlg
+            ## default(/):               Incoming NULL session, SP-Initiate AuthNRequest
             switch -glob [string tolower [URI::query [HTTP::uri]]] {
                 "*samlresponse*" { log local0. "samlresponse"
                     set encodedQuery "[URI::query [HTTP::uri] SAMLResponse]"
@@ -81,14 +89,9 @@ when HTTP_REQUEST {
     }
 }
 when HTTP_REQUEST_DATA {
+    ## Process the POST Data here.  
     set postReplay_Handle [ILX::init saml_replay_plugin saml_replay_ext]
-    set post_header "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">"
-    append $post_header "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\"><body>"
-    append $post_header "<script type='text/javascript'>window.onload=function(){ window.setTimeout(document.SAMLReplay.submit.bind(document.SAMLReplay), 500);};</script>"
-    append $post_header "<noscript><p><strong>Note:</strong> Since your browser does not support JavaScript,you must press the Continue button once to proceed.</p></noscript>"
 
-    set post_footer "<noscript><input type=\"submit\" value=\"Continue\"/></noscript></form></body></html>"
-    
     set SAMLResponse ""
     set relayState ""
     foreach x [split [string tolower [HTTP::payload]] "&"] {
@@ -101,14 +104,37 @@ when HTTP_REQUEST_DATA {
     }
     set saml_verify [ILX::call $postReplay_Handle saml-validate $x true]
     log local0. "status: $saml_verify"
+    
+    ## Insert samlresponse/relaystate in session table to use on HTTP_RESPONSE
+    ## Also add a bool for replaystatus so we no to replay or not
+}
 
-    ##  This wont work here, so figure out best place for this form <HTTP_RESPONSE>?
+when HTTP_RESPONSE {
+    ## Get samlresponse/relaystate/replaystatus from session table
+    ## Get MRHSession yes/no
+    set samlresponse ""
+    set relaystate ""
+    set replaystatus ""
+    set apm_cookie [HTTP::cookie exists MRHSession]
+    
+    if {(($apm_cookie) && ($replaystatus eq "1"))} {
+    set post_header "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">"
+    append $post_header "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\"><body>"
+    append $post_header "<script type='text/javascript'>window.onload=function(){ window.setTimeout(document.SAMLReplay.submit.bind(document.SAMLReplay), 500);};</script>"
+    append $post_header "<noscript><p><strong>Note:</strong> Since your browser does not support JavaScript,you must press the Continue button once to proceed.</p></noscript>"
+
+    set post_footer "<noscript><input type=\"submit\" value=\"Continue\"/></noscript></form></body></html>"
+
     set $post_form "<form name=\"SAMLReplay\" action=\"\" method=\"post\"><input type=\"hidden\" name=\"RelayState\" value=\"$relayState\"/>"
     append $post_form "<input type=\"hidden\" name=\"SAMLRequest\" value=\"$SAMLResponse\"/>"
     set content $post_header$post_form$post_footer
     HTTP::respond 200 $content
+    }
 }
 ## APM Integration 
+## for 302
 ## when ACCESS_ACL_ALLOWED {
 ##   ACCESS::respond 302 "Location" sessiontable entry
 ## }
+## For POST HTTP_RESPONSE should work as well...  If MRHSession.
+
