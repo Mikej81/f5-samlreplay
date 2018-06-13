@@ -4,15 +4,17 @@ var f5 = require('f5-nodejs');
 // Import the XML-Crypto Libraries
 var zlib = require('zlib');
 var crypto = require('crypto');
-var xml2js = require('xml2js');
+var xmldom = require('xmldom');
 var xmlCrypto = require('xml-crypto');
 var xmlbuilder = require('xmlbuilder');
 var xmlenc = require('xml-encryption');
+var xpath = require('xpath');
 var select = require('xml-crypto').xpath;
 var dom = require('xmldom').DOMParser;
 var SignedXml = require('xml-crypto').SignedXml;
 var FileKeyInfo = require('xml-crypto').FileKeyInfo;
 var fs = require('fs');
+var _ = require('lodash');
 var querystring = require('querystring');
 var InMemoryCacheProvider = require('./inmemory-cache-provider.js').CacheProvider;
 var Q = require('q');
@@ -24,63 +26,49 @@ function initialize(options) {
   if (!options) {
     options = {};
   }
-
   if (!options.path) {
     options.path = '/saml/consume';
   }
-  
   if (!options.entryPoint) {
-      options.entryPoint = 'https://192.168.2.60/'
+      options.entryPoint = 'https://192.168.2.60/';
   }
-
   if (!options.host) {
     options.host = 'localhost';
   }
-  
   if (!options.issuerURL) {
-      options.issuerURL = 'https://192.168.2.60/'
+      options.issuerURL = 'https://192.168.2.60/';
   }
-
   if (!options.issuer) {
     options.issuer = 'f5-saml-replay';
   }
-
   if (options.identifierFormat === undefined) {
     options.identifierFormat = "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress";
   }
-
   if (options.authnContext === undefined) {
     options.authnContext = "urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport";
   }
-
   if (!options.acceptedClockSkewMs) {
     // default to no skew
     options.acceptedClockSkewMs = 0;
   }
-
   if(!options.validateInResponseTo){
     options.validateInResponseTo = false;
   }
-
   if(!options.requestIdExpirationPeriodMs){
     options.requestIdExpirationPeriodMs = 28800000;  // 8 hours
   }
-
   if(!options.cacheProvider){
       options.cacheProvider = new InMemoryCacheProvider(
           {keyExpirationPeriodMs: options.requestIdExpirationPeriodMs });
   }
-
   if (!options.logoutUrl) {
     // Default to Entry Point
     options.logoutUrl = options.entryPoint || '';
   }
-
   // sha1, sha256, or sha512
   if (!options.signatureAlgorithm) {
     options.signatureAlgorithm = 'sha1';
   }
-
   return options;
 }
 
@@ -166,13 +154,25 @@ function getAdditionalParams(req, operation) {
   return additionalParams;
 }
 
+function samlParse(saml) {
+    var profile = {};
+    var doc = new xmldom.DOMParser().parseFromString(saml);
+    var attributes = xpath.select('//*[local-name() = "AttributeStatement"]/*', doc);
+    attributes.forEach(function(attribute){
+        var name = xpath.select('string(@Name)', attribute);
+        profile[_.camelCase(name)] = xpath.select('string(*[local-name() = "AttributeValue"]/text())', attribute);
+        
+    });
+    return profile;
+}
+
 // Create a new rpc server for listening to TCL iRule calls.
 var ilx = new f5.ILXServer();
 
 ilx.addMethod('saml-request', function(req, res) {
     var method = req.params()[0];
     var landingURI = req.params()[1];
-    var sign = req.params()[2]
+    var sign = req.params()[2];
     
     var isPassive = false;
     
@@ -272,12 +272,10 @@ ilx.addMethod('saml-validate', function(req, res) {
     
     var parsed;
     if (parse == 'true') {
-        //var parser = new Saml2js(rawAssertion);
-        //parsed = parser.asObject();
-        //console.log(parsed);
-        parsed = "parse=true;notimplemented";
+        var parser = samlParse(rawAssertion);
+        parsed = JSON.stringify(parser);
     } else {
-        parsed = "parse=false;notimplemented";
+        parsed = "parse=false";
     }
 
    res.reply([isvalid, parsed]);
@@ -285,4 +283,7 @@ ilx.addMethod('saml-validate', function(req, res) {
 
 // Start listening for ILX::call and ILX::notify events.
 ilx.listen();
+
+
+
 

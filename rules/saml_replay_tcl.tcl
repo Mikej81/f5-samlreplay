@@ -44,9 +44,16 @@ when HTTP_REQUEST {
                         if { ([table keys -subtable $tableName -count] == 0) } {
                         set tblcreate [table set -subtable $tableName $keyName $samlResponse 30]
                         set saml_verify [ILX::call $samlReplay_Handle saml-validate $encodedQuery true]
-                        log local0. "status: $saml_verify"
+                        ## log local0. "status: $saml_verify"
                         set signature_status [lindex $saml_verify 0]
                         set attributes [lindex $saml_verify 1]
+                        ##  If attributes are returned they are in JSON
+                        ##  FindStr should work, or split, not sure most
+                        ##  efficient method yet...
+                        ##  If APM integrating, these should be inserted into a table
+                        ##  Then start the access session and insert into
+                        ##  ACCESS::session data set session.x.x.x...
+                        ##  Unsure which ID value to use so wont hard code this now
                         table set -subtable $tableName verified $signature_status 30
                         if { ($signature_status contains "Invalid") } {
                             # Invalid Signature
@@ -137,4 +144,5 @@ when HTTP_RESPONSE {
 ##   ACCESS::respond 302 "Location" sessiontable entry
 ## }
 ## For POST HTTP_RESPONSE should work as well...  If MRHSession.
+
 

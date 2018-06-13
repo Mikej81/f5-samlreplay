@@ -12,14 +12,14 @@
   "dependencies": {
     "crypto": "^1.0.1",
     "f5-nodejs": "0.0.3",
+    "lodash": "^4.17.10",
     "q": "^1.5.1",
     "querystring": "^0.2.0",
-    "saml2json": "^1.0.0",
     "xml-crypto": "^0.10.1",
     "xml-encryption": "^0.11.1",
-    "xml2js": "^0.4.19",
     "xmlbuilder": "^10.0.0",
     "xmldom": "^0.1.27",
+    "xpath": "0.0.27",
     "zlib": "^1.0.5"
   },
   "devDependencies": {},
