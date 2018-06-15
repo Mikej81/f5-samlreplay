@@ -18,7 +18,7 @@ when HTTP_REQUEST {
 
     ## Create RPC Handler, Plugin name needs to match the plugin below.
     ## ILX::init <PLUGIN NAME> <EXTENSION NAME>
-    set samlReplay_Handle [ILX::init saml_replay_plugin samlreplay_ext]
+    set samlReplay_Handle [ILX::init samlreplay_v0.0.6 samlreplay_ext]
     
     if {$apm_cookie == 0} {
     ## Start Switch METHOD
@@ -97,7 +97,7 @@ when HTTP_REQUEST {
 }
 when HTTP_REQUEST_DATA {
     ## Process the POST Data here.  
-    set postReplay_Handle [ILX::init saml_replay_plugin samlreplay_ext]
+    set postReplay_Handle [ILX::init samlreplay_v0.0.6 samlreplay_ext]
 
     set SAMLResponse ""
     set relayState ""
@@ -144,5 +144,6 @@ when HTTP_RESPONSE {
 ##   ACCESS::respond 302 "Location" sessiontable entry
 ## }
 ## For POST HTTP_RESPONSE should work as well...  If MRHSession.
+
 
 
