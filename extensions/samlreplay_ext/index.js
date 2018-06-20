@@ -80,6 +80,14 @@ function generateInstant() {
   return new Date().toISOString();
 }
 
+function urlCleaned(samlResponse) {
+    if(samlResponse.indexOf('%') != -1) {
+     return decodeURIComponent(samlResponse);
+    } else {
+        return samlResponse;
+    }
+}
+
 function signRequest(samlMessage) {
   var signer;
   var samlMessageToSign = {};
@@ -248,7 +256,8 @@ ilx.addMethod('saml-request', function(req, res) {
 ilx.addMethod('saml-validate', function(req, res) {
     var parse = req.params()[1];
 
-    var URLDecodedAssertion = decodeURIComponent(req.params()[0]);
+    //var URLDecodedAssertion = decodeURIComponent(req.params()[0]);
+    var URLDecodedAssertion = urlCleaned(req.params()[0]);
     var B64Assertion = new Buffer(URLDecodedAssertion, 'base64');
     var rawAssertion = zlib.inflateRawSync(B64Assertion).toString('utf8');
     var doc = new dom().parseFromString(rawAssertion);
@@ -283,6 +292,7 @@ ilx.addMethod('saml-validate', function(req, res) {
 
 // Start listening for ILX::call and ILX::notify events.
 ilx.listen();
+
 
 
 

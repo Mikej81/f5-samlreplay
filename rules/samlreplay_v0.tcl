@@ -124,16 +124,16 @@ when HTTP_RESPONSE {
     set replaystatus ""
     set apm_cookie [HTTP::cookie exists MRHSession]
     
-    if {(($apm_cookie) && ($replaystatus eq "1"))} {
+    if {(($apm_cookie == 0) && ($replaystatus eq "1"))} {
     set post_header "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">"
-    append $post_header "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\"><body>"
-    append $post_header "<script type='text/javascript'>window.onload=function(){ window.setTimeout(document.SAMLReplay.submit.bind(document.SAMLReplay), 500);};</script>"
-    append $post_header "<noscript><p><strong>Note:</strong> Since your browser does not support JavaScript,you must press the Continue button once to proceed.</p></noscript>"
+    append post_header "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\"><body>"
+    append post_header "<script type='text/javascript'>window.onload=function(){ window.setTimeout(document.SAMLReplay.submit.bind(document.SAMLReplay), 500);};</script>"
+    append post_header "<noscript><p><strong>Note:</strong> Since your browser does not support JavaScript,you must press the Continue button once to proceed.</p></noscript>"
 
     set post_footer "<noscript><input type=\"submit\" value=\"Continue\"/></noscript></form></body></html>"
 
-    set $post_form "<form name=\"SAMLReplay\" action=\"\" method=\"post\"><input type=\"hidden\" name=\"RelayState\" value=\"$relayState\"/>"
-    append $post_form "<input type=\"hidden\" name=\"SAMLRequest\" value=\"$SAMLResponse\"/>"
+    set post_form "<form name=\"SAMLReplay\" action=\"\" method=\"post\"><input type=\"hidden\" name=\"RelayState\" value=\"$relayState\"/>"
+    append post_form "<input type=\"hidden\" name=\"SAMLRequest\" value=\"$SAMLResponse\"/>"
     set content $post_header$post_form$post_footer
     HTTP::respond 200 $content
     }
@@ -144,6 +144,7 @@ when HTTP_RESPONSE {
 ##   ACCESS::respond 302 "Location" sessiontable entry
 ## }
 ## For POST HTTP_RESPONSE should work as well...  If MRHSession.
+
 
 
 
