@@ -84,8 +84,6 @@ CacheProvider.prototype.get = function(key, callback){
     }
 
 };
-
-
 /**
  * Removes an item from the cache if it exists
  * @param key
@@ -100,8 +98,5 @@ CacheProvider.prototype.remove = function(key, callback){
     {
         callback(null, null);
     }
-
 };
-
 exports.CacheProvider = CacheProvider;
-

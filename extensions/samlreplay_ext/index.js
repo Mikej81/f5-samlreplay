@@ -292,8 +292,3 @@ ilx.addMethod('saml-validate', function(req, res) {
 
 // Start listening for ILX::call and ILX::notify events.
 ilx.listen();
-
-
-
-
-
