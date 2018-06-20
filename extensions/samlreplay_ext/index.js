@@ -88,6 +88,14 @@ function urlCleaned(samlResponse) {
     }
 }
 
+function inflateClean(samlReponse) {
+    if (samlResponse.includes('samlp:Response')) {
+        return samlResponse;
+    } else {
+        return zlib.inflateRawSync(samlResponse).toString('utf8');
+    }
+}
+
 function signRequest(samlMessage) {
   var signer;
   var samlMessageToSign = {};
@@ -259,7 +267,9 @@ ilx.addMethod('saml-validate', function(req, res) {
     //var URLDecodedAssertion = decodeURIComponent(req.params()[0]);
     var URLDecodedAssertion = urlCleaned(req.params()[0]);
     var B64Assertion = new Buffer(URLDecodedAssertion, 'base64');
-    var rawAssertion = zlib.inflateRawSync(B64Assertion).toString('utf8');
+    //var rawAssertion = zlib.inflateRawSync(B64Assertion).toString('utf8');
+    var rawAssertion = inflateClean(B64Assertion);
+    
     var doc = new dom().parseFromString(rawAssertion);
     var signature = select(doc, "/*/*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")[0];
     var sig = new SignedXml();
@@ -292,3 +302,4 @@ ilx.addMethod('saml-validate', function(req, res) {
 
 // Start listening for ILX::call and ILX::notify events.
 ilx.listen();
+
