@@ -11,9 +11,7 @@ BIG-IP 13.1.0.x
 -Attach TCL iRule to VS
 
 ## TODO
--HTTP-POST Binding:  Need some captures
-
--APM Integration: SAMLResponse into table for replay after APM
+-APM Integration: ACCESS_ACL_ALLOWED {}
 
 ## Notes
 
