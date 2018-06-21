@@ -105,38 +105,39 @@ when HTTP_REQUEST_DATA {
 
     set SAMLResponse ""
     set relayState ""
-    foreach x [split [string tolower [HTTP::payload]] "&"] {
+    ## log local0. "Payload: [HTTP::payload]"
+    
+    foreach x [split [HTTP::payload] "&"] {
         if {$x starts_with "samlresponse="} {
             append SAMLResponse [lindex [split $x "="] 1]
+            ## log local0. "SAMLResponse:  $SAMLResponse"
         }
-        if {$x starts_with "relaystate="} {
+        if {$x starts_with "relayState="} {
             append relayState [lindex [split $x "="] 1]
         }
     }
-    set saml_verify [ILX::call $postReplay_Handle saml-validate $x true]
+    set saml_verify [ILX::call $postReplay_Handle saml-validate $SAMLResponse true]
     set signature_status [lindex $saml_verify 0]
     set attributes [lindex $saml_verify 1]
-    ## log local0. "status: $saml_verify"
+    log local0. "status: $saml_verify"
     table set -subtable $tableName verified $signature_status 30
     table set -subtable $tableName attributes $attributes 30
     table set -subtable $tableName samlResponse $SAMLResponse 30
     table set -subtable $tableName relayState $relayState 30
     table set -subtable $tableName replayStatus 0 30
-    
-    ## Insert samlresponse/relaystate in session table to use on HTTP_RESPONSE
-    ## Also add a bool for replaystatus so we no to replay or not
 }
 
 when HTTP_RESPONSE {
     ## Get samlresponse/relaystate/replaystatus from session table
     set samlresponse [table lookup -subtable $tableName samlResponse]
-    set relaystate [table lookup -subtable $tableNmae relayState]
+    set relaystate [table lookup -subtable $tableName relayState]
     set replaystatus [table lookup -subtable $tableName replayStatus]
     ## Get MRHSession yes/no
     set apm_cookie [HTTP::cookie exists MRHSession]
     
     ## Set Form Post Action
     set formAction "https://formposturl.domain.com/login"
+    log local0. "APM: $apm_cookie, Replay: $replaystatus"
     
     if {(($apm_cookie == 0) && ($replaystatus eq "0"))} {
     table set -subtable $tableName replayStatus 1 30
@@ -159,4 +160,7 @@ when HTTP_RESPONSE {
 ##   ACCESS::respond 302 "Location" sessiontable entry
 ## }
 ## For POST HTTP_RESPONSE should work as well...  If MRHSession.
+
+
+
 

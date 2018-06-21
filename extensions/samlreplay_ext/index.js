@@ -80,21 +80,13 @@ function generateInstant () {
   return new Date().toISOString()
 }
 
-function urlCleaned (samlResponse) {
-  if (samlResponse.indexOf('%') !== -1) {
-    return decodeURIComponent(samlResponse)
-  } else {
-    return samlResponse
-  }
-}
-
 function inflateClean (samlResponse) {
   if (samlResponse.includes('samlp:Response')) {
-    console.log('NOT INFLATING')
-    return samlResponse
+    return samlResponse.toString('utf8')
   } else {
     console.log('INFLATING')
-    return zlib.inflateRawSync(samlResponse).toString('utf8')
+    var tmp = zlib.inflateRawSync(samlResponse).toString('utf8')
+    return tmp
   }
 }
 
@@ -225,16 +217,29 @@ ilx.addMethod('saml-request', function (req, res) {
   res.reply(['OK', redirectAuth])
 })
 
+function isEncoded (url) {
+  var url = url || ''
+  return url !== decodeURIComponent(url)
+}
+
+function cleanURI (uri) {
+  while (isEncoded(uri)) {
+    uri = decodeURIComponent(uri)
+  }
+  return uri
+}
+
 ilx.addMethod('saml-validate', function (req, res) {
   var parse = req.params()[1]
+  var saml = req.params()[0]
 
-  // var URLDecodedAssertion = decodeURIComponent(req.params()[0]);
-  var URLDecodedAssertion = urlCleaned(req.params()[0])
-  // console.log("URL Decoded: " + URLDecodedAssertion);
+  var URLDecodedAssertion = cleanURI(saml)
   var B64Assertion = Buffer.from(URLDecodedAssertion, 'base64')
-  // console.log("B64 Decoded: " + B64Assertion);
   var rawAssertion = inflateClean(B64Assertion)
-  console.log('Inflated: ' + rawAssertion)
+
+  // var rawAssertion = inflateClean(B64Assertion)
+  // Inflate Breaking on non Deflated
+  // var rawAssertion = B64AssertionBuff.toString('utf8');
 
   var doc = new dom().parseFromString(rawAssertion)
   var signature = select(doc, "/*/*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")[0]
@@ -268,4 +273,3 @@ ilx.addMethod('saml-validate', function (req, res) {
 
 // Start listening for ILX::call and ILX::notify events.
 ilx.listen()
-
