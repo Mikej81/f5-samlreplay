@@ -13,37 +13,35 @@
  * @constructor
  */
 var CacheProvider = function (options) {
-    var self = this;
-    this.cacheKeys = {};
+  var self = this
+  this.cacheKeys = {}
 
-    if (!options) {
-        options = {};
-    }
+  if (!options) {
+    options = {}
+  }
 
-    if(!options.keyExpirationPeriodMs){
-        options.keyExpirationPeriodMs = 28800000;  // 8 hours
-    }
+  if (!options.keyExpirationPeriodMs) {
+    options.keyExpirationPeriodMs = 28800000 // 8 hours
+  }
 
-    this.options = options;
+  this.options = options
 
-    // Expire old cache keys
-    var expirationTimer = setInterval(function(){
-        var nowMs = new Date().getTime();
-        var keys = Object.keys(self.cacheKeys);
-        keys.forEach(function(key){
-            if(nowMs >= new Date(self.cacheKeys[key].createdAt).getTime() + self.options.keyExpirationPeriodMs){
-                self.remove(key, function(){});
-            }
-        });
-    }, this.options.keyExpirationPeriodMs);
+  // Expire old cache keys
+  var expirationTimer = setInterval(function () {
+    var nowMs = new Date().getTime()
+    var keys = Object.keys(self.cacheKeys)
+    keys.forEach(function (key) {
+      if (nowMs >= new Date(self.cacheKeys[key].createdAt).getTime() + self.options.keyExpirationPeriodMs) {
+        self.remove(key, function () {})
+      }
+    })
+  }, this.options.keyExpirationPeriodMs)
 
-    // we only want this to run if the process is still open; it shouldn't hold the process open (issue #68)
-    //   (unref only introduced in node 0.9, so check whether we have it)
-    // Skip this in 0.10.34 due to https://github.com/joyent/node/issues/8900
-    if (expirationTimer.unref && process.version !== 'v0.10.34')
-        expirationTimer.unref();
-};
-
+  // we only want this to run if the process is still open; it shouldn't hold the process open (issue #68)
+  //   (unref only introduced in node 0.9, so check whether we have it)
+  // Skip this in 0.10.34 due to https://github.com/joyent/node/issues/8900
+  if (expirationTimer.unref && process.version !== 'v0.10.34') { expirationTimer.unref() }
+}
 
 /**
  * Store an item in the cache, using the specified key and value.
@@ -51,52 +49,41 @@ var CacheProvider = function (options) {
  * @param id
  * @param value
  */
-CacheProvider.prototype.save = function(key, value, callback){
-    if(!this.cacheKeys[key])
-    {
-        this.cacheKeys[key] = {
-            createdAt: new Date().getTime(),
-            value: value
-        };
-
-        callback(null, this.cacheKeys[key]);
-    }
-    else
-    {
-        callback(null, null);
+CacheProvider.prototype.save = function (key, value, callback) {
+  if (!this.cacheKeys[key]) {
+    this.cacheKeys[key] = {
+      createdAt: new Date().getTime(),
+      value: value
     }
 
-};
-
+    callback(null, this.cacheKeys[key])
+  } else {
+    callback(null, null)
+  }
+}
 
 /**
  * Returns the value of the specified key in the cache
  * @param id
  * @returns {boolean}
  */
-CacheProvider.prototype.get = function(key, callback){
-    if(this.cacheKeys[key]){
-        callback(null, this.cacheKeys[key].value);
-    }
-    else
-    {
-        callback(null, null);
-    }
-
-};
+CacheProvider.prototype.get = function (key, callback) {
+  if (this.cacheKeys[key]) {
+    callback(null, this.cacheKeys[key].value)
+  } else {
+    callback(null, null)
+  }
+}
 /**
  * Removes an item from the cache if it exists
  * @param key
  */
-CacheProvider.prototype.remove = function(key, callback){
-    if(this.cacheKeys[key])
-    {
-        delete this.cacheKeys[key];
-        callback(null, key);
-    }
-    else
-    {
-        callback(null, null);
-    }
-};
-exports.CacheProvider = CacheProvider;
+CacheProvider.prototype.remove = function (key, callback) {
+  if (this.cacheKeys[key]) {
+    delete this.cacheKeys[key]
+    callback(null, key)
+  } else {
+    callback(null, null)
+  }
+}
+exports.CacheProvider = CacheProvider
