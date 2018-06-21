@@ -1,4 +1,5 @@
 # F5 ILX SAML-Replay
+![diagram](https://imgur.com/EOXy4An)
 
 ## Requirements
 BIG-IP 13.1.0.x
