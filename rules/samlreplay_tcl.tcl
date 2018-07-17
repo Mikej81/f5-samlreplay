@@ -1,21 +1,25 @@
-#####################################################################################
+################################################################################
 #  SAMLReplay
 #  Verify SAMLReponse Signature and Replay to SP
 #  Michael Coleman, Michael@f5.com
+#  https://github.com/Mikej81/f5-samlreplay
 #
 #  HTTP-REDIRECT seems to be set.  Currently ignoring SigAlg and RelayState.
 #
-#  HTTP-POST seems to be almost there.  Using a 307 now instead of all the overhead.
+#  HTTP-POST seems to be almost there.  Using a 307 now instead of all the 
+#  overhead.
 #
-#  Signature Status: 0 = Good, 1 = Error, 2 = Not Signed
+#  Signature Status: 0 = Good, 1 = Error, 2 = Not Signed / undefined
 #
 #  Setup:
 #  -Create Datagroup (type:string)
-#  -Add config item for app/cookie:  name: host_cookie, value: cookiename, 
+#  -Add config item for app/cookie: name:host_cookie,value:cookiename, 
 #    i.e., domain.com:=sessioncookie
-#  -Add config item for app/ssourl:  name: host_ssourl, value: https://domain.com/sso
+#  -Add config item for app/ssourl: name:host_ssourl,value:https://domain.com/
 #    i.e., domain.com:=https://domain.com/sso
 #    static::ssoURL is for fallback
+#  -Import IDP Public Key to cert.pem and ensure index.js:signaturePubKey points
+#   to that file.
 #
 ####################################################################################
 when RULE_INIT {
