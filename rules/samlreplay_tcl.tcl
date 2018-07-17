@@ -8,11 +8,22 @@
 #  HTTP-POST seems to be almost there.  Using a 307 now instead of all the overhead.
 #
 #  Signature Status: 0 = Good, 1 = Error, 2 = Not Signed
-# 
+#
+#  Setup:
+#  -Create Datagroup (type:string)
+#  -Add config item for app/cookie:  name: host_cookie, value: cookiename, 
+#    i.e., domain.com:=sessioncookie
+#  -Add config item for app/ssourl:  name: host_ssourl, value: https://domain.com/sso
+#    i.e., domain.com:=https://domain.com/sso
+#    static::ssoURL is for fallback
+#
 ####################################################################################
 when RULE_INIT {
-    set static::action_url "https://192.168.2.60/test.post"
+    set static::genAuthNRequest "0"
+    set static::configDG "samlreplayconfig"
+    set static::defaultRedir "https://domain.com/?"
     set static::keyName "replayToken"
+    set static::MRH "MRHSession"
 }
 
 when CLIENT_ACCEPTED {
@@ -20,19 +31,28 @@ when CLIENT_ACCEPTED {
     set client [IP::client_addr][TCP::remote_port][IP::local_addr][TCP::local_port]
     set client_hash [sha512 $client]
     set tableName $client_hash
-    #log local0. "CREATING SESSION HASH: $tableName"
 }
 
 when HTTP_REQUEST {
+    ## Dynamic Config via Datagroup
+    #  Cookie Name
+    if { [class match "[string tolower [HTTP::host]]_cookie" eq $static::configDG ] } {
+     set appCookie [class match -value "[string tolower [HTTP::host]]_cookie" eq $static::configDG]
+     #log local0. "$appCookie"
+    } else {
+     set appCookie "MRHSession"
+    }
+    # SSO Redirect URL
+    if { [class match "[string tolower [HTTP::host]]_ssourl" eq $static::configDG ] } {
+     set ssoURL [class match -value "[string tolower [HTTP::host]]_ssourl" eq $static::configDG]
+     #log local0. "$ssoURL"
+    } else {
+     set ssoURL $static::defaultRedir
+    }    
+
     ## Check if MRHSession Exists and/or replayStatus entry set
-    set apm_cookie [HTTP::cookie exists MRHSession]
-    #set apm_session [ACCESS::session exists]
-    
-    #log local0. "APM COOKIE: $apm_cookie"
-    #log local0. "APM SESSION: $apm_session"
-    set replaystatus [table lookup -subtable $tableName replayStatus]
-    #log local0. "ReplayStatus: $replaystatus"
-    
+    set apm_cookie [HTTP::cookie exists $static::MRH]
+
     ## Create RPC Handler, Plugin name needs to match the plugin below.
     ## ILX::init <PLUGIN NAME> <EXTENSION NAME>
     set samlReplay_Handle [ILX::init samlreplay_plugin samlreplay_ext]
@@ -47,7 +67,7 @@ when HTTP_REQUEST {
             ## SAMLResponse:    Incoming SAMLResponse, currently ignoring RelayState and SigAlg
             ## default(/):               Incoming NULL session, SP-Initiate AuthNRequest
             switch -glob [string tolower [URI::query [HTTP::uri]]] {
-                "*samlresponse*" { 
+                "*samlresponse*" {
                     #log local0. "samlresponse"
                     set encodedQuery "[URI::query [HTTP::uri] SAMLResponse]"
                     set decodedURI "[URI::decode [HTTP::uri] ]"
@@ -58,13 +78,13 @@ when HTTP_REQUEST {
                         ## We make a table entry for the SAMLResponse so we can hold it
                         ## till after the MRHSession is established,
                         ## then we can replay it to the backend.
-                        #log local0. "SAMLResponse exists, creating table entry"
-                        if { ([table keys -subtable $tableName -count] == 0) } {
-                        set tblcreate [table set -subtable $tableName $static::keyName $samlResponse 30]
+
                         set saml_verify [ILX::call $samlReplay_Handle saml-validate $encodedQuery true]
                         ## log local0. "status: $saml_verify"
+                        
                         set signature_status [lindex $saml_verify 0]
                         set attributes [lindex $saml_verify 1]
+                        
                         ##  If attributes are returned they are in JSON
                         ##  FindStr should work, or split, not sure most
                         ##  efficient method yet...
@@ -72,16 +92,12 @@ when HTTP_REQUEST {
                         ##  Then start the access session and insert into
                         ##  ACCESS::session data set session.x.x.x...
                         ##  Unsure which ID value to use so wont hard code this now
-                        table set -subtable $tableName verified $signature_status 30
+                        
                         if { ($signature_status eq "1") } {
                             # Invalid Signature
                             set html $signature_status
                             HTTP::respond 200 $html
                         }
-                        if { ($signature_status eq "2") } {
-                            # SAMLResponse not signed, what do?
-                        }
-              }
             }
                 }
                 default {
@@ -90,11 +106,17 @@ when HTTP_REQUEST {
                 ## Config details for IDP and SP in index.js
                 ## Currently only coded for 302 right now...
                     set callbackURI ""
-                    log local0. "No MRHSession Cookie, no Querystring, generate AuthNRequest"
                     ## usage: saml-request [method] [callbackURI] [sign true/false]
-                    set AuthNRequest [ILX::call $samlReplay_Handle saml-request [HTTP::method] [HTTP::host][HTTP::uri] false]
-                    if { [lindex $AuthNRequest 0] eq "OK"} {
-                        HTTP::redirect [lindex $AuthNRequest 1]
+                    if { $static::genAuthNRequest eq "1" } {
+                        log local0. "Generate AuthNRequest"
+                        set AuthNRequest [ILX::call $samlReplay_Handle saml-request [HTTP::method] [HTTP::host][HTTP::uri] false]
+                        if { [lindex $AuthNRequest 0] eq "OK"} {
+                            HTTP::redirect [lindex $AuthNRequest 1]
+                        }
+                    }
+                    if { !([HTTP::cookie exists $static::appCookie]) } {
+                      ##AppCookie does not exist
+                      HTTP::redirect $ssoURL
                     }
                 }
             }
@@ -106,8 +128,6 @@ when HTTP_REQUEST {
             ## under HTTP_REQUEST_DATA.
             log local0. "POST: Replay $replaystatus"
             if { ($replaystatus eq "") || ($replaystatus eq "0")} {
-                #log local0. "len = [HTTP::header Content-Length]"
-                #log local0. "req = [HTTP::request]"
                 HTTP::collect [HTTP::header Content-Length]
             }
         }
@@ -119,16 +139,14 @@ when HTTP_REQUEST {
 when HTTP_REQUEST_DATA {
     ## Process the POST Data here.
 
-    ## Get MRHSession yes/no
-    set apm_cookie [HTTP::cookie exists MRHSession]
-    set replaystatus [table lookup -subtable $tableName replayStatus]
-
     set postReplay_Handle [ILX::init samlreplay_plugin samlreplay_ext]
-
-    # log local0. "APM: $apm_cookie, Replay: $replaystatus"
 
     set SAMLResponse ""
     set relayState ""
+
+    #  You may need to change samlresponse to SAMLResponse here
+    #  my test environment used lower.  I could do a string tolower on the payload
+    #  but that screws up the encoding.
 
     foreach x [split [HTTP::payload] &] {
         if {$x starts_with "samlresponse="} {
@@ -143,47 +161,11 @@ when HTTP_REQUEST_DATA {
     set signature_status [lindex $saml_verify 0]
     set attributes [lindex $saml_verify 1]
 
-    table set -subtable $tableName verified $signature_status 30
-    table set -subtable $tableName attributes $attributes 30
-    table set -subtable $tableName samlResponse $SAMLResponse 30
-    table set -subtable $tableName relayState $relayState 30
-
-    if { ($signature_status eq "0") || ($signature_status eq "2") } {
-        if {($replaystatus eq "") && ($replaystatus ne 1) } {
-            append replaystatus 0
-            ## BUILD FORM
-                set content "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\"> \
-                <html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\"><body> \
-                <script type='text/javascript'>window.onload=function(){ window.setTimeout(document.SAMLReplay.submit.bind(document.SAMLReplay), 500);};</script> \
-                <noscript><p><strong>Note:</strong> Since your browser does not support JavaScript,you must press the Continue button once to proceed.</p></noscript> \
-                <form name=\"SAMLReplay\" action=\"$static::action_url\" method=\"post\">"
-
-            foreach p [split [HTTP::payload] &] {
-                    set name  [URI::decode [getfield $p = 1]]
-                    set value [URI::decode [getfield $p = 2]]
-                    set content "${content}<INPUT type=hidden name='$name' value='$value'>"
-                }
-            # End BUILD FORM
-            set content "${content}<INPUT type=submit value=Send></FORM></BODY></HTML>"
-        }
-    }
     log local0. "Signature Status:  $signature_status"
-    log local0. "APM: $apm_cookie"
-    log local0. "Replay: $replaystatus"
 
-    ## Logic for APM Cookie and POST FORM here
-    if {(($apm_cookie == 0) && ($replaystatus eq "0"))} {
-        table set -subtable $tableName replayStatus 1 30
-        ## Redirect maintaining POST data to self/app
-        #HTTP::respond 307 $static::action_url
-        HTTP::respond 200 content $content
+    if { $signature_status eq "1" } {
+        reject
     }
 }
 
-## APM Integration
-## for 302
-# when ACCESS_ACL_ALLOWED {
-#   ACCESS::respond 307 "Location" $static::action_url
-# }
-## For POST HTTP_RESPONSE should work as well...  If MRHSession.
 

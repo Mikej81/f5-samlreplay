@@ -81,6 +81,7 @@ function generateInstant () {
 }
 
 function inflateClean (samlResponse) {
+    console.log('inflateClean ' + samlResponse)
   if (samlResponse.includes('samlp:Response')) {
     return samlResponse.toString('utf8')
   } else {
@@ -255,9 +256,9 @@ ilx.addMethod('saml-validate', function (req, res) {
     } else {
       isvalid = "0"
     }
-  } else {
-    isvalid = '2'
-  }
+    } else {
+      isvalid = '2'
+    }
 
   var parsed
   if (parse === 'true') {
@@ -272,5 +273,4 @@ ilx.addMethod('saml-validate', function (req, res) {
 
 // Start listening for ILX::call and ILX::notify events.
 ilx.listen()
-
 
