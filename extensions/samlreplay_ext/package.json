@@ -10,9 +10,11 @@
     "node": "6.9.1"
   },
   "dependencies": {
+    "Q": "^1.0.0",
     "crypto": "^1.0.1",
     "f5-nodejs": "0.0.3",
     "lodash": "^4.17.10",
+    "q": "^1.5.1",
     "querystring": "^0.2.0",
     "xml-crypto": "^0.10.1",
     "xml-encryption": "^0.11.1",
@@ -30,6 +32,6 @@
     "eslint-plugin-standard": "^3.1.0"
   },
   "scripts": {
-	"lint": "node ./node_modules/.bin/eslint index.js/;exit 0"
-    }
+    "lint": "node ./node_modules/.bin/eslint index.js/;exit 0"
+  }
 }

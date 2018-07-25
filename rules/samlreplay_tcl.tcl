@@ -9,7 +9,7 @@
 #  HTTP-POST seems to be almost there.  Using a 307 now instead of all the 
 #  overhead.
 #
-#  Signature Status: 0 = Good, 1 = Error, 2 = Not Signed / undefined
+#  Signature Status: 0 = Good, 1 = Error, will output error string
 #
 #  Setup:
 #  -Create Datagroup (type:string)
@@ -28,13 +28,6 @@ when RULE_INIT {
     set static::defaultRedir "https://domain.com/?"
     set static::keyName "replayToken"
     set static::MRH "MRHSession"
-}
-
-when CLIENT_ACCEPTED {
-    ## Create a HASH for the session table key for this user
-    set client [IP::client_addr][TCP::remote_port][IP::local_addr][TCP::local_port]
-    set client_hash [sha512 $client]
-    set tableName $client_hash
 }
 
 when HTTP_REQUEST {
@@ -118,7 +111,7 @@ when HTTP_REQUEST {
                             HTTP::redirect [lindex $AuthNRequest 1]
                         }
                     }
-                    if { !([HTTP::cookie exists $static::appCookie]) } {
+                    if { !([HTTP::cookie exists $appCookie]) } {
                       ##AppCookie does not exist
                       HTTP::redirect $ssoURL
                     }
@@ -130,10 +123,11 @@ when HTTP_REQUEST {
             ## HTTP-POST BINDING
             ## We only need to collect here, then process
             ## under HTTP_REQUEST_DATA.
-            log local0. "POST: Replay $replaystatus"
-            if { ($replaystatus eq "") || ($replaystatus eq "0")} {
+            #if { ($replaystatus eq "") || ($replaystatus eq "0")} {
+            if { !([HTTP::cookie exists $appCookie]) } {
                 HTTP::collect [HTTP::header Content-Length]
             }
+            #}
         }
     }
     ##End Switch METHOD
@@ -171,5 +165,3 @@ when HTTP_REQUEST_DATA {
         reject
     }
 }
-
-
