@@ -16,7 +16,7 @@
     "lodash": "^4.17.10",
     "q": "^1.5.1",
     "querystring": "^0.2.0",
-    "xml-crypto": "^0.10.1",
+    "xml-crypto": "^2.0.0",
     "xml-encryption": "^0.11.1",
     "xmlbuilder": "^10.0.0",
     "xmldom": "^0.1.27",
